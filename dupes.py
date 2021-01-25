@@ -1,10 +1,3 @@
-# import os
-
-# with os.scandir() as dir_entries:
-#     for entry in dir_entries:
-#         info = entry.stat()
-#         print(info.st_mtime)
-
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -44,3 +37,7 @@ for path in result: #Path('.').iterdir():
     f"{dt(info.st_ctime)},{dt(info.st_atime)},{info.st_size},"+
     f"{md5_hash},{dupe},{command}")
     hash_list.add(md5_hash)
+
+# steps: use cvs module for writing cvs file
+# correctly mark files as duplicates
+# write to file
