@@ -1,1 +1,4 @@
-rsync -av . /Volumes/photo/incoming/ --exclude={'@*','.git/'} 
+#! /bin/bash
+
+rsync -av . /Volumes/photo/incoming/test --exclude={'@*','.git/'} 
+
