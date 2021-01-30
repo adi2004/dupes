@@ -1,0 +1,5 @@
+pillow
+imagehash
+numpy
+fusepy
+pathlib

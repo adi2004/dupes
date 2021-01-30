@@ -1,5 +1,25 @@
+#!/usr/bin/env python3.8
+
 import csv
 import sys
+
+# takes 2 inputs and outputs 2 cvs files -> one with unique files, and the other with duplicates
+class Const:
+    duplicates = "duplicates.csv"
+    incoming_unique = "incoming_unique.csv"
+    fields = [
+        "path_part_1", "path_part_2", "path_part_3",'file_extension',
+        "path", "file_name",
+        'modified_time',
+        'file_size',
+        'md5_hash', 'exiftool_time',
+        'is_duplicate', 'command'
+    ]
+
+
+if len(sys.argv) != 3:
+    print(f"Use ./dupes.py <master-catalog.csv> <incoming-catalog.csv, it will output '{Const.duplicates}' and '{Const.incoming_unique}'")
+    exit(1)
 
 master_catalog_file = sys.argv[1]
 incoming_catalog_file = sys.argv[2]
@@ -11,6 +31,17 @@ def read(file):
         for row in csv_reader:
             catalog.append(row)
     return catalog
+
+def write(file, catalog):
+    with open(file, 'w') as file_handler: 
+        # creating a csv dict writer object 
+        writer = csv.DictWriter(file_handler, fieldnames = Const.fields) 
+        
+        # writing headers (field names) 
+        writer.writeheader() 
+        
+        # writing data rows 
+        writer.writerows(catalog) 
 
 master_catalog = read(master_catalog_file)
 incoming_catalog = read(incoming_catalog_file)
@@ -31,31 +62,5 @@ for incoming_file_attributes in incoming_catalog:
     if not is_duplicate:
         incoming_unique_catalog.append(incoming_file_attributes)
 
-
-duplicates = "duplicates.csv"
-fields = ["path_part_1", "path_part_2", "path_part_3",'file_extension',
-    "path", "file_name",
-    'modified_time',
-    'file_size',
-    'md5_hash', 'exiftool_time',
-    'is_duplicate', 'command']
-with open(duplicates, 'w') as duplicates_file_handler: 
-    # creating a csv dict writer object 
-    writer = csv.DictWriter(duplicates_file_handler, fieldnames = fields) 
-      
-    # writing headers (field names) 
-    writer.writeheader() 
-      
-    # writing data rows 
-    writer.writerows(duplicates_catalog) 
-
-incoming_unique = "incoming_unique.csv"
-with open(incoming_unique, 'w') as duplicates_file_handler: 
-    # creating a csv dict writer object 
-    writer = csv.DictWriter(duplicates_file_handler, fieldnames = fields) 
-      
-    # writing headers (field names) 
-    writer.writeheader() 
-      
-    # writing data rows 
-    writer.writerows(incoming_unique_catalog) 
+write(Const.duplicates, duplicates_catalog)
+write(Const.incoming_uniquem incoming_unique_catalog)
