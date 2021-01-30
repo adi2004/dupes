@@ -63,4 +63,4 @@ for incoming_file_attributes in incoming_catalog:
         incoming_unique_catalog.append(incoming_file_attributes)
 
 write(Const.duplicates, duplicates_catalog)
-write(Const.incoming_uniquem incoming_unique_catalog)
+write(Const.incoming_unique, incoming_unique_catalog)

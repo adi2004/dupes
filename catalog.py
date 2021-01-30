@@ -1,4 +1,4 @@
-#!/usr/bin/env python3.8
+#!/usr/bin/env python3
 
 import sys
 from pathlib import Path
@@ -11,6 +11,7 @@ import subprocess
 from PIL import Image
 import imagehash
 import os
+import dhash
 
 if len(sys.argv) != 3:
     print("Use ./catalog.py <dir-to-catalog> <catalog-file.csv")
@@ -21,7 +22,7 @@ fields = [
     "path", "file_name",
     'modified_time',
     'file_size',
-    'md5_hash', 'exiftool_time', 'image_hash', 'similarity',
+    'md5_hash', 'exiftool_time', 'image_average_hash', 'image_difference_hash', 'similarity',
     'is_duplicate', 'command'
 ]
 
@@ -38,7 +39,8 @@ class FileProperties:
     file_size = ""
     md5_hash = "" 
     exiftool_time = "" 
-    image_hash = ""
+    image_average_hash = ""
+    image_difference_hash = ""
     similarity = ""
     is_duplicate = "" 
     command = ""
@@ -49,7 +51,8 @@ class FileProperties:
             'path': self.path, 'file_name': self.file_name, 
             'modified_time': self.modified_time,
             'file_size': self.file_size, 
-            'md5_hash': self.md5_hash, 'exiftool_time': self.exiftool_time,  'image_hash': self.image_hash, 'similarity': self.similarity,
+            'md5_hash': self.md5_hash, 'exiftool_time': self.exiftool_time,  'image_average_hash': self.image_average_hash, 
+            'image_difference_hash': self.image_difference_hash, 'similarity': self.similarity,
             'is_duplicate': self.is_duplicate, 'command': self.command}
 
 exclude_list = [".git", "@eaDir", "backup", "incoming"]
@@ -80,13 +83,21 @@ def exiftool_date(filename):
         return date_trimmed
     return ""
 
-def image_hash(filename):
-    hash_size = 8
+def image_average_hash(filename):
+    hash_size = 16
     if not filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
         return ""
     with Image.open(filename) as img:
         hash = imagehash.average_hash(img, hash_size)
         return hash
+    return ""
+
+def image_difference_hash(filename):
+    if not filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
+        return ""
+    with Image.open(filename) as img:
+        row, col = dhash.dhash_row_col(img)
+        return dhash.format_hex(row, col)
     return ""
 
 start_time = time.time()
@@ -132,11 +143,13 @@ for path in catalog_paths:
     # size
     file_properties.file_size = info.st_size
     # md5 hash
-    file_properties.md5_hash = md5_hash(file_with_path)
+    # file_properties.md5_hash = md5_hash(file_with_path)
     # get date using exiftool
-    file_properties.exiftool_time = exiftool_date(file_with_path)
-    #image hash
-    file_properties.image_hash = image_hash(file_with_path)
+    # file_properties.exiftool_time = exiftool_date(file_with_path)
+    #image average hash
+    # file_properties.image_average_hash = image_average_hash(file_with_path)
+    # image_difference_hash
+    file_properties.image_difference_hash = image_difference_hash(file_with_path)
 
     # add to catalog
     catalog.append(file_properties.asdict())

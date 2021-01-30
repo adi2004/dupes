@@ -3,3 +3,4 @@ imagehash
 numpy
 fusepy
 pathlib
+dhash
