@@ -11,3 +11,5 @@ I keep my files in one storage.
 I want to manually add new files from some remote directory, to my storage, but some files are aready there so I should spot them.
 
 On the remote drive some changes can occur, maybe so files are added, modifyed or deleted. I want to take the 
+
+Needs also exiftool.
