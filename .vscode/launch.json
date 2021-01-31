@@ -1,0 +1,39 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "dupes",
+            "type": "python",
+            "request": "launch",
+            "program": "dupes.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "catalog",
+            "type": "python",
+            "request": "launch",
+            "program": "catalog.py",
+            "console": "integratedTerminal",
+            "args": [
+                "0",
+                "../",
+                "test.csv"
+            ]
+        }, 
+        {
+            "name": "catalog_long_path",
+            "type": "python",
+            "request": "launch",
+            "program": "catalog.py",
+            "console": "integratedTerminal",
+            "args": [
+                "0",
+                "/Users/adrian.florescu/Code/playground",
+                "test.csv"
+            ]
+        }
+    ]
+}

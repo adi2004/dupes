@@ -19,7 +19,13 @@ class Const:
     gibi = 1024 * 1024 * 1024
     mebi = 1024 * 1024
     kibi = 1024
+
     progress = ["|", "/", "-", "|", "\\"]
+    imgs = ['.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif']
+    mvs = ['.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg']
+
+    exclude_list = [".git", "@eaDir", "backup", "incoming"] # case insensitive
+    include_list = ['.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg']
 
     md5_hash_flag = "5"
     exiftool_flag = "e"
@@ -33,7 +39,7 @@ class View:
 
 
 def is_ignored(filename):
-    for exclude_keyword in exclude_list:
+    for exclude_keyword in Const.exclude_list:
         if exclude_keyword.lower() in filename:
             return True
     return False
@@ -62,7 +68,7 @@ def print_progress(file_path, file_name, view):
         size_string = "%.2f KiB" % (view.total_size / Const.kibi)
 
     spinner = " " + Const.progress[view.file_count % 5] + " "
-    out_string = "\rFound {:,d}".format(view.file_count) + " files" + \
+    out_string = "\rFound {:,d}".format(view.file_count) + " files " + \
         "totaling " + size_string + spinner + \
         "reading " + file_path + "/" + file_name
     if len(out_string) > 120:
@@ -82,28 +88,33 @@ def md5_hash(filename):
         return md5_hash.hexdigest()
 
 
-def exiftool_date(filename):
-    date_output = subprocess.getoutput(
-        'exiftool -CreateDate "{}"'.format(file_with_path))
-    date_trimmed = re.sub("^.*: ", "", date_output)
-    date_trimmed = re.sub(":", ".", date_trimmed)
-    if date_trimmed.startswith("20") or date_trimmed.startswith("19"):
-        return date_trimmed
-    return ""
-
-
-def exiftool_duration(filename):
-    if not filename.lower().endswith(('.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg')):
-        return ""
-    date_output = subprocess.getoutput(
-        'exiftool -Duration "{}"'.format(file_with_path))
-    date_trimmed = re.sub("^.*: ", "", date_output)
-    return date_trimmed
+def exiftool(filename):
+    output = subprocess.getoutput(
+        'exiftool -d "%Y.%m.%d %H.%M.%S" -Duration -ContentCreateDate -CreateDate "' + filename + '"')
+    output = output.splitlines()
+    result = {
+        "exiftool_duration": "",
+        "exiftool_date": "", 
+        "exiftool_content_date": ""
+    }
+    for line in output:
+        if line.startswith("Create"):
+            line = re.sub("^.*: ", "", line)
+            if line.startswith("19") or line.startswith("20"):
+                result["exiftool_date"] = line
+        elif line.startswith("Content"):
+            line = re.sub("^.*: ", "", line)
+            if line.startswith("19") or line.startswith("20"):
+                result["exiftool_content_date"] = line
+        if line.startswith("Duration"):
+            line = re.sub("^.*: ", "", line)
+            result["exiftool_duration"] = line
+    return result
 
 
 def image_average_hash(filename):
     hash_size = 16
-    if not filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
+    if not filename.lower().endswith(tuple(Const.imgs)):
         return ""
     with Image.open(filename) as img:
         hash = imagehash.average_hash(img, hash_size)
@@ -112,16 +123,11 @@ def image_average_hash(filename):
 
 
 def image_difference_hash(filename):
-    if not filename.lower().endswith(('.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif')):
+    if not filename.lower().endswith(tuple(Const.imgs)):
         return ""
     with Image.open(filename) as img:
         row, col = dhash.dhash_row_col(img)
         return dhash.format_hex(row, col)
-
-
-def movie_hash(filename):
-    if not filename.lower().endswith(('.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg')):
-        return ""
 
 
 def write(file, catalog):
@@ -143,21 +149,20 @@ def write(file, catalog):
 if len(sys.argv) != 4:
     print("Use ./catalog.py flags <dir-to-catalog> <catalog-file.csv")
     print(
-        "The flags are:\n" +
-        Const.md5_hash_flag + " for MD5" +
-        Const.exiftool_flag + " for MD5" +
-        Const.avarage_hash_flag + " for aHash algorithm" +
-        Const.difference_hash_flag + " for dHash algorithm (recommended)"
+        "The flags are:\n\t" +
+        Const.md5_hash_flag + " for MD5\n\t" +
+        Const.exiftool_flag + " for MD5\n\t" +
+        Const.avarage_hash_flag + " for aHash algorithm\n\t" +
+        Const.difference_hash_flag + " for dHash algorithm (recommended)\n"
     )
     exit(1)
 
-exclude_list = [".git", "@eaDir", "backup", "incoming"]
-include_list = ['.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg']
-
 
 start_time = time.time()
-flags = sys.argv[1].split()
-catalog_directory = sys.argv[2]
+flags = sys.argv[1]
+catalog_directory = sys.argv[2] 
+if catalog_directory.endswith('/'):
+    catalog_directory = catalog_directory[:-1]
 catalog_file_name = sys.argv[3]
 print("Reading {}/{}".format(os.getcwd(), catalog_directory))
 
@@ -180,7 +185,7 @@ for path in catalog_paths:
         info = path.stat()
         # populate filter criteria
         view.printed_length = print_progress(path_parent_short, file_name, view)
-        paths = path_parent.split("/")
+        paths = path_parent_short.split("/")
         fprop["path_part_1"] = paths[0] if len(paths) > 0 else ""
         fprop["path_part_2"] = paths[1] if len(paths) > 1 else ""
         fprop["path_part_3"] = paths[2] if len(paths) > 2 else ""
@@ -188,7 +193,7 @@ for path in catalog_paths:
         fprop["file_extension"] = file_name.split(".")[-1].lower()
 
         # populate path and file_name
-        fprop["path"] = path_parent
+        fprop["path"] = path_parent_short
         fprop["file_name"] = file_name
 
         # populate file dates
@@ -204,8 +209,8 @@ for path in catalog_paths:
             fprop["md5_hash"] = md5_hash(file_with_path)
         # get date using exiftool
         if Const.exiftool_flag in flags:
-            fprop["exiftool_date"] = exiftool_date(file_with_path)
-            fprop["exiftool_duration"] = exiftool_duration(file_with_path)
+            exiftool_result = exiftool(file_with_path)
+            fprop.update(exiftool_result)
         # image average hash
         if Const.avarage_hash_flag in flags:
             fprop["image_average_hash"] = image_average_hash(file_with_path)
