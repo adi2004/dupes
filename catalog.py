@@ -18,52 +18,14 @@ if len(sys.argv) != 3:
     print("Use ./catalog.py <dir-to-catalog> <catalog-file.csv")
     exit(1)
 
-fields = [
-    "path_part_1", "path_part_2", "path_part_3", 'file_extension',
-    "path", "file_name",
-    'modified_time',
-    'file_size',
-    'md5_hash', 'exiftool_date', 'exiftool_duration',
-    'image_average_hash', 'image_difference_hash', 'similarity',
-    'is_duplicate', 'command'
-]
-
-
-class FileProperties:
-    path_part_1 = ""
-    path_part_2 = ""
-    path_part_3 = ""
-    file_extension = ""
-    path = ""
-    file_name = ""
-    modified_time = ""
-    creation_time = ""
-    access_time = ""
-    file_size = ""
-    md5_hash = ""
-    exiftool_date = ""
-    exiftool_duration = ""
-    image_average_hash = ""
-    image_difference_hash = ""
-    similarity = ""
-    is_duplicate = ""
-    command = ""
-
-    def asdict(self):
-        return {
-            'path_part_1': self.path_part_1, 'path_part_2': self.path_part_2, 'path_part_3': self.path_part_3, 'file_extension': self.file_extension,
-            'path': self.path, 'file_name': self.file_name,
-            'modified_time': self.modified_time,
-            'file_size': self.file_size,
-            'md5_hash': self.md5_hash, 'exiftool_date': self.exiftool_date, 'exiftool_duration': self.exiftool_duration,
-            'image_average_hash': self.image_average_hash,
-            'image_difference_hash': self.image_difference_hash, 'similarity': self.similarity,
-            'is_duplicate': self.is_duplicate, 'command': self.command}
-
-
 exclude_list = [".git", "@eaDir", "backup", "incoming"]
 include_list = ['.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg']
 
+
+class Const:
+    gibi = 1024 * 1024 * 1024
+    mebi = 1024 * 1024
+    kibi = 1024
 
 def is_ignored(filename):
     for exclude_keyword in exclude_list:
@@ -74,6 +36,12 @@ def is_ignored(filename):
 
 def is_included(filename):
     return True  # filename.lower().endswith(('.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg'))
+
+
+def remove_prefix(text, prefix):
+    if text.startswith(prefix):
+        return text[len(prefix):]
+    return text  # or whatever
 
 
 def dt(timestamp):
@@ -126,21 +94,38 @@ def image_difference_hash(filename):
         return dhash.format_hex(row, col)
 
 
-def movie_hash():
+def movie_hash(filename):
     if not filename.lower().endswith(('.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg')):
         return ""
+
+
+def write(file, catalog):
+    if len(catalog) == 0:
+        print("Nothing to write...")
+    print("Writing to {}".format(file))
+    with open(file, 'w') as file_handler:
+        # creating a csv dict writer object
+        writer = csv.DictWriter(
+            file_handler, fieldnames=list(catalog[0].keys()))
+
+        # writing headers (field names)
+        writer.writeheader()
+
+        # writing data rows
+        writer.writerows(catalog)
 
 
 start_time = time.time()
 catalog_directory = sys.argv[1]
 catalog_file_name = sys.argv[2]
-print("Reading {}".format(catalog_directory))
+print("Reading {}/{}".format(os.getcwd(), catalog_directory))
 
 catalog_paths = list(Path(catalog_directory).rglob("*"))
 
 catalog = []
 
 file_count = 0
+total_size = 0
 progress = ["|", "/", "-", "|", "\\"]
 for path in catalog_paths:
     path_parent = str(path.parent)
@@ -149,64 +134,63 @@ for path in catalog_paths:
     if path.is_dir() or is_ignored(file_with_path) or not is_included(file_with_path):
         continue
     file_count += 1
-    fprop = FileProperties()
+    fprop = {}
     try:
         info = path.stat()
         # populate filter criteria
+        path_parent = remove_prefix(path_parent, catalog_directory)
         path_parent = re.sub("^[./]+", "", path_parent)
-        print("\rFound {} files {} reading from {}".format(
-            file_count, progress[file_count % 5], file_with_path[0:120] + " " * 60 + "\r"), end="")
+        if total_size >= Const.gibi:
+            size_string = "%.2f GiB" % (total_size / Const.gibi)
+        elif total_size >= Const.mebi:
+            size_string = "%.2f MiB" % (total_size / Const.mebi)
+        else:
+            size_string = "%.2f KiB" % (total_size / Const.kibi)
+        print("Found {} files totaling {} {} reading {}"
+            .format(file_count, size_string, progress[file_count % 5], file_with_path[0:120] + " " * 60), 
+            end="\r")
         paths = path_parent.split("/")
-        if len(paths) > 0:
-            fprop.path_part_1 = paths[0]
-        if len(paths) > 1:
-            fprop.path_part_2 = paths[1]
-        if len(paths) > 2:
-            fprop.path_part_3 = paths[-1]
-        fprop.file_extension = file_name.split(".")[-1].lower()
+        fprop["path_part_1"] = paths[0] if len(paths) > 0 else ""
+        fprop["path_part_2"] = paths[1] if len(paths) > 1 else ""
+        fprop["path_part_3"] = paths[2] if len(paths) > 2 else ""
+        fprop["path_end"] = paths[-1] if len(paths) > 0 else ""
+        fprop["file_extension"] = file_name.split(".")[-1].lower()
 
         # populate path and file_name
-        fprop.path = path_parent
-        fprop.file_name = file_name
+        fprop["path"] = path_parent
+        fprop["file_name"] = file_name
 
         # populate file dates
-        fprop.modified_time = dt(info.st_mtime)
-        fprop.created_time = dt(info.st_ctime)
-        fprop.access_time = dt(info.st_atime)
+        fprop["modified_time"] = dt(info.st_mtime)
+        fprop["created_time"] = dt(info.st_ctime)
+        fprop["access_time"] = dt(info.st_atime)
 
         # size
-        fprop.file_size = info.st_size
+        fprop["file_size"] = info.st_size
+        total_size += info.st_size
         # md5 hash
-        # file_properties.md5_hash = md5_hash(file_with_path)
+        fprop["md5_hash"] = md5_hash(file_with_path)
         # get date using exiftool
-        fprop.exiftool_date = exiftool_date(file_with_path)
+        fprop["exiftool_date"] = exiftool_date(file_with_path)
         # get muvie duration using exiftool
-        fprop.exiftool_duration = exiftool_duration(file_with_path)
+        fprop["exiftool_duration"] = exiftool_duration(file_with_path)
         # image average hash
-        #file_properties.image_average_hash = image_average_hash(file_with_path)
+        fprop["image_average_hash"] = image_average_hash(file_with_path)
         # image_difference_hash
-        fprop.image_difference_hash = image_difference_hash(
-            file_with_path)
+        fprop["image_difference_hash"] = image_difference_hash(file_with_path)
 
         # add to catalog
-        catalog.append(fprop.asdict())
+        catalog.append(fprop)
+    except KeyboardInterrupt:
+        exit(1)
     except:
-        print("Got it!", sys.exc_info()[0], "occurred.")
+        print("\nGot it!", sys.exc_info()[0], "occurred.\n")
         continue
 
 print("\n")
 
 # writing to csv file
-print("Writing to {}".format(catalog_file_name))
-with open(catalog_file_name, 'w') as catalog_file_handler:
-    # creating a csv dict writer object
-    writer = csv.DictWriter(catalog_file_handler, fieldnames=fields)
-
-    # writing headers (field names)
-    writer.writeheader()
-
-    # writing data rows
-    writer.writerows(catalog)
+write(catalog_file_name, catalog)
 
 time_total = time.time() - start_time
 time_minutes = int(time_total / 60)
