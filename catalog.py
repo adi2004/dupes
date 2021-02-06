@@ -39,6 +39,7 @@ class View:
 
 
 def is_ignored(filename):
+    filename = filename.lower()
     for exclude_keyword in Const.exclude_list:
         if exclude_keyword.lower() in filename:
             return True
@@ -151,9 +152,9 @@ if len(sys.argv) != 4:
     print(
         "The flags are:\n\t" +
         Const.md5_hash_flag + " for MD5\n\t" +
-        Const.exiftool_flag + " for MD5\n\t" +
-        Const.avarage_hash_flag + " for aHash algorithm\n\t" +
-        Const.difference_hash_flag + " for dHash algorithm (recommended)\n"
+        Const.exiftool_flag + " for exiftool\n\t" +
+        Const.avarage_hash_flag + " for average hash algorithm\n\t" +
+        Const.difference_hash_flag + " for difference hash algorithm (recommended)\n"
     )
     exit(1)
 
