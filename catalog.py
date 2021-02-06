@@ -149,7 +149,7 @@ def write(file, catalog):
 # === START === #
 
 if len(sys.argv) != 4:
-    print("Use ./catalog.py flags <dir-to-catalog> <catalog-file.csv")
+    print("Use ./catalog.py flags <dir-to-catalog> <catalog_file.csv")
     print(
         "The flags are:\n\t" +
         Const.md5_hash_flag + " for MD5\n\t" +
@@ -226,7 +226,7 @@ for path in catalog_paths:
     except KeyboardInterrupt:
         exit(1)
     except:
-        print("\nError ", sys.exc_info()[0], "occurred.")
+        print("\nError ", sys.exc_info()[0], " occurred.")
         continue
 
 print("\n")

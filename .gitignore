@@ -133,3 +133,4 @@ test/
 *.csv
 .DS_Store
 .unotes
+catalogs/

@@ -38,63 +38,47 @@ def append_suffix(file, suffix):
     extension = os.path.splitext(file)[1]
     return name + "." + suffix + extension
 
+def dupes_catalog(catalog, headers_criteria, existing_key_values, max_dupes=2):
+    catalog_with_duplicates = []
+    for file_attrs in catalog:
+        key = ""
+        for header in headers_criteria:
+            key += file_attrs.get(header, "")
+        value = existing_key_values.get(key, 0)
+        if value >= max_dupes:
+            file_attrs["dupe_count"] = value
+            file_attrs["org_full_path"] = existing_key_values.get(key+"file", "")
+            catalog_with_duplicates.append(file_attrs)
+    return catalog_with_duplicates
+
 # === START === #
 
-if len(sys.argv) != 3:
-    print(f"Use ./dupes.py <header1,header2,...> <master_catalog.csv> <incoming_catalog.csv, it will output 'master_catalog.{Const.duplicates}.csv' and '{Const.incoming_unique}'")
+if len(sys.argv) != 4:
+    print(f"Use ./dupes.py <header1,header2,...> <master_catalog.csv> <incoming_catalog.csv, it will output 'master_catalog.{Const.duplicates}.csv' and 'incoming_catalog.{Const.duplicates}.csv'")
     exit(1)
 
 headers = sys.argv[1].split(",")
 master_catalog_file = sys.argv[2]
-# incoming_catalog_file = sys.argv[3]
+incoming_catalog_file = sys.argv[3]
 
 master_catalog = read(master_catalog_file)
-# incoming_catalog = read(incoming_catalog_file)
+incoming_catalog = read(incoming_catalog_file)
 
 master_kv = {}
 incoming_unique_catalog = []
 incoming_duplicates_catalog = []
 
-
 for master_file_attrs in master_catalog:
     key = ""
     for header in headers:
         key += master_file_attrs[header]
-    value = master_kv.get(key, "")
-    if len(value) > 0:
-        value += Const.files_separator
-    value += master_file_attrs["file_name"]
-    master_kv[key] = value
+    master_kv[key] = master_kv.get(key, 0) + 1
+    master_kv[key+"file"] = master_file_attrs["path"] + "/" + master_file_attrs["file_name"]
 
-master_catalog_with_duplicates = []
-for master_file_attrs in master_catalog:
-    key = ""
-    for header in headers:
-        key += master_file_attrs[header]
-    value = master_kv.get(key, "")
-    if Const.files_separator in value:
-        master_file_attrs["is_dupe"] = value
-        master_catalog_with_duplicates.append(master_file_attrs)
-
+master_catalog_with_duplicates = dupes_catalog(master_catalog, headers, master_kv)
 master_duplicates_file = append_suffix(master_catalog_file, Const.duplicates)
 write(master_duplicates_file, master_catalog_with_duplicates)
 
-# print(master_kv)
-# write("master_kv.csv", [{"md5": "","file":""}, master_kv])
-
-# for incoming_file_attributes in incoming_catalog:
-
-#     is_duplicate = False
-#     for master_file_attributes in master_catalog:
-#         if incoming_file_attributes['md5_hash'] == master_file_attributes['md5_hash']:
-#             print(master_file_attributes['file_name'])
-#             incoming_file_attributes['is_duplicate'] += master_file_attributes['path'] + "/" + master_file_attributes['file_name']
-#             incoming_file_attributes['command'] += "rm -v \"" + incoming_file_attributes['path'] + "/" + incoming_file_attributes['file_name'] + "\""
-#             incoming_duplicates_catalog.append(incoming_file_attributes)
-#             is_duplicate = True
-#             break
-#     if not is_duplicate:
-#         incoming_unique_catalog.append(incoming_file_attributes)
-
-# write(Const.duplicates, incoming_duplicates_catalog)
-# write(Const.incoming_unique, incoming_unique_catalog)
+incoming_catalog_with_duplicates = dupes_catalog(incoming_catalog, headers, master_kv, 1)
+incoming_duplicates_file = append_suffix(incoming_catalog_file, Const.duplicates)
+write(incoming_duplicates_file, incoming_catalog_with_duplicates)
