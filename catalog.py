@@ -146,6 +146,7 @@ def write(file, catalog):
         # writing data rows
         writer.writerows(catalog)
 
+# === START === #
 
 if len(sys.argv) != 4:
     print("Use ./catalog.py flags <dir-to-catalog> <catalog-file.csv")
