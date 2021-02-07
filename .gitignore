@@ -130,7 +130,10 @@ dmypy.json
 
 #mine
 test/
+catalogs/
+.unotes/
+.vscode/
+
+copy.sh
 *.csv
 .DS_Store
-.unotes
-catalogs/
