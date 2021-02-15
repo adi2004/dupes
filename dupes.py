@@ -13,36 +13,52 @@ def dupes_catalog(catalog, headers_criteria, existing_key_values, max_dupes=2):
         key = ""
         for header in headers_criteria:
             key += file_attrs.get(header, "")
-        value = existing_key_values.get(key, 0)
-        if value >= max_dupes:
-            file_attrs["dupe_count"] = value
-            file_attrs["org_full_path"] = existing_key_values.get(key+"org_full_path", "")
+        if len(key) == 0:
+            continue
+        duplicate_files = existing_key_values.get(key, [])
+        if len(duplicate_files) >= max_dupes:
+            file_attrs["dupe_count"] = len(duplicate_files)
             catalog_with_duplicates.append(file_attrs)
     return catalog_with_duplicates
 
 # === START === #
 
-if len(sys.argv) != 4:
-    print(f"Use ./dupes.py <header1,header2,...> <master_catalog.csv> <incoming_catalog.csv, it will output 'master_catalog.{Const.duplicates}.csv' and 'incoming_catalog.{Const.duplicates}.csv'")
+if len(sys.argv) != 3 and len(sys.argv) != 4:
+    print(f"Use ./dupes.py <header1,header2,...> <master_catalog.csv> <incoming_catalog.csv>, it will output 'master_catalog.{Const.duplicates}.csv' and 'incoming_catalog.{Const.duplicates}.csv'")
     exit(1)
 
 headers = sys.argv[1].split(",")
 master_catalog_file = sys.argv[2]
 master_catalog = read(master_catalog_file)
+
+# create a dictionary where on the key is the duplication criteria, and the value is an array with the file attributes
 master_kv = {}
 for master_file_attrs in master_catalog:
     key = ""
     for header in headers:
         key += master_file_attrs[header]
-    master_kv[key] = master_kv.get(key, 0) + 1
-    master_kv[key+"org_full_path"] = master_file_attrs["path"] + "/" + master_file_attrs["file_name"]
+    dupes = master_kv.get(key, []) + [master_file_attrs]
+    dupes.sort(key=lambda k: k['modified_time'], reverse=True)
+    dupes.sort(key=lambda k: int(k['file_size']), reverse=True)
+    for dupe in dupes:
+        dupe["delete"] = True
+        dupe_path = '"dupes/' + dupe["path"] + '"'
+        dupe["cmd"] = 'mkdir -p ' + dupe_path + ' && mv "' + dupe["path"] + "/" + dupe["file_name"] + '" ' + dupe_path
+    dupes[0]["delete"] = False
+    dupes[0]["cmd"] = ""
+    master_kv[key] = dupes
 
 master_catalog_with_duplicates = dupes_catalog(master_catalog, headers, master_kv)
 master_duplicates_file = append_suffix(master_catalog_file, Const.duplicates)
+master_catalog_with_duplicates.sort(key=lambda k: k['modified_time'], reverse=True)
+master_catalog_with_duplicates.sort(key=lambda k: int(k['file_size']), reverse=True)
+master_catalog_with_duplicates.sort(key=lambda k: k['image_difference_hash'])
 write(master_duplicates_file, master_catalog_with_duplicates)
 
-incoming_catalog_file = sys.argv[3]
-incoming_catalog = read(incoming_catalog_file)
-incoming_catalog_with_duplicates = dupes_catalog(incoming_catalog, headers, master_kv, 1)
-incoming_duplicates_file = append_suffix(incoming_catalog_file, Const.duplicates)
-write(incoming_duplicates_file, incoming_catalog_with_duplicates)
+# find duplicates in the second catalog if they exist in the first catalog
+if len(sys.argv) == 4:
+    incoming_catalog_file = sys.argv[3]
+    incoming_catalog = read(incoming_catalog_file)
+    incoming_catalog_with_duplicates = dupes_catalog(incoming_catalog, headers, master_kv, 1)
+    incoming_duplicates_file = append_suffix(incoming_catalog_file, Const.duplicates)
+    write(incoming_duplicates_file, incoming_catalog_with_duplicates)
