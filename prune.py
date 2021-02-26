@@ -5,7 +5,7 @@ import os
 from common import read, write, Const, append_suffix
 
 if len(sys.argv) != 3:
-    print("Use ./prune.py <dir-to-catalog> <catalog_file.csv")
+    print("Use ./prune.py <dir-to-catalog> <catalog_file.csv>")
     exit(1)
 
 catalog_directory = sys.argv[1]

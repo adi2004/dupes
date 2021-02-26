@@ -37,6 +37,7 @@ def read(file):
 def write(file, catalog):
     if len(catalog) == 0:
         print("Nothing to write...")
+        return
     print("Writing to {}".format(file))
     with open(file, 'w') as file_handler:
         # creating a csv dict writer object

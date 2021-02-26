@@ -18,6 +18,7 @@ def dupes_catalog(catalog, headers_criteria, existing_key_values, max_dupes=2):
         duplicate_files = existing_key_values.get(key, [])
         if len(duplicate_files) >= max_dupes:
             file_attrs["dupe_count"] = len(duplicate_files)
+            file_attrs["cmd"] = duplicate_files[0]["cmd"]
             catalog_with_duplicates.append(file_attrs)
     return catalog_with_duplicates
 
@@ -44,8 +45,8 @@ for master_file_attrs in master_catalog:
         dupe["delete"] = True
         dupe_path = '"dupes/' + dupe["path"] + '"'
         dupe["cmd"] = 'mkdir -p ' + dupe_path + ' && mv "' + dupe["path"] + "/" + dupe["file_name"] + '" ' + dupe_path
-    dupes[0]["delete"] = False
-    dupes[0]["cmd"] = ""
+    # dupes[0]["delete"] = False
+    # dupes[0]["cmd"] = ""
     master_kv[key] = dupes
 
 master_catalog_with_duplicates = dupes_catalog(master_catalog, headers, master_kv)
