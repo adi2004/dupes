@@ -139,80 +139,89 @@ def read_configuration():
     cfg.catalog_file_name = sys.argv[3]
     return cfg
 
+def make_catalog(directory, flags):
+    catalog_paths = list(Path(directory).rglob("*"))
+
+    catalog = []
+    view = View()
+
+    for path in catalog_paths:
+        path_parent = str(path.parent)
+        file_name = str(path.name)
+        file_with_path = path_parent + "/" + file_name
+        path_parent_short = remove_prefix(path_parent, config.catalog_directory)
+        path_parent_short = re.sub("^[./]+", "", path_parent_short)
+        if path.is_dir() or is_ignored(file_with_path) or not is_included(file_with_path):
+            continue
+        view.file_count += 1
+        fprop = {}
+        try:
+            info = path.stat()
+            # populate filter criteria
+            view.printed_length = print_progress(path_parent_short, file_name, view)
+            paths = path_parent_short.split("/")
+            fprop["path_part_1"] = paths[0] if len(paths) > 0 else ""
+            fprop["path_part_2"] = paths[1] if len(paths) > 1 else ""
+            fprop["path_part_3"] = paths[2] if len(paths) > 2 else ""
+            fprop["path_end"] = paths[-1] if len(paths) > 0 else ""
+            fprop["file_extension"] = file_name.split(".")[-1].lower()
+
+            # populate path and file_name
+            fprop["path"] = path_parent_short
+            fprop["file_name"] = file_name
+
+            # populate file dates
+            fprop["modified_time"] = dt(info.st_mtime)
+            fprop["created_time"] = dt(info.st_ctime)
+            fprop["access_time"] = dt(info.st_atime)
+            # size
+            fprop["file_size"] = info.st_size
+            view.total_size += info.st_size
+
+            # md5 hash
+            if Const.md5_hash_flag in flags:
+                fprop["md5_hash"] = md5_hash(file_with_path)
+            # get date using exiftool
+            if Const.exiftool_flag in flags:
+                exiftool_result = exiftool(file_with_path)
+                fprop.update(exiftool_result)
+            # image average hash
+            if Const.avarage_hash_flag in flags:
+                fprop["image_average_hash"] = image_average_hash(file_with_path)
+            # image_difference_hash
+            if Const.difference_hash_flag in flags:
+                fprop["image_difference_hash"] = image_difference_hash(
+                    file_with_path)
+
+            # add to catalog
+            catalog.append(fprop)
+        except KeyboardInterrupt:
+            exit(1)
+        except:
+            print("\nError ", sys.exc_info()[0], " occurred.")
+            continue
+    print("\n")
+    
+    return catalog
+
 # === START === #
 
 start_time = time.time()
 config = read_configuration()
-
 print("Reading {}/{}".format(os.getcwd(), config.catalog_directory))
-
-catalog_paths = list(Path(config.catalog_directory).rglob("*"))
-
-catalog = []
-view= View()
-
-for path in catalog_paths:
-    path_parent = str(path.parent)
-    file_name = str(path.name)
-    file_with_path = path_parent + "/" + file_name
-    path_parent_short = remove_prefix(path_parent, config.catalog_directory)
-    path_parent_short = re.sub("^[./]+", "", path_parent_short)
-    if path.is_dir() or is_ignored(file_with_path) or not is_included(file_with_path):
-        continue
-    view.file_count += 1
-    fprop = {}
-    try:
-        info = path.stat()
-        # populate filter criteria
-        view.printed_length = print_progress(path_parent_short, file_name, view)
-        paths = path_parent_short.split("/")
-        fprop["path_part_1"] = paths[0] if len(paths) > 0 else ""
-        fprop["path_part_2"] = paths[1] if len(paths) > 1 else ""
-        fprop["path_part_3"] = paths[2] if len(paths) > 2 else ""
-        fprop["path_end"] = paths[-1] if len(paths) > 0 else ""
-        fprop["file_extension"] = file_name.split(".")[-1].lower()
-
-        # populate path and file_name
-        fprop["path"] = path_parent_short
-        fprop["file_name"] = file_name
-
-        # populate file dates
-        fprop["modified_time"] = dt(info.st_mtime)
-        fprop["created_time"] = dt(info.st_ctime)
-        fprop["access_time"] = dt(info.st_atime)
-        # size
-        fprop["file_size"] = info.st_size
-        view.total_size += info.st_size
-
-        # md5 hash
-        if Const.md5_hash_flag in config.flags:
-            fprop["md5_hash"] = md5_hash(file_with_path)
-        # get date using exiftool
-        if Const.exiftool_flag in config.flags:
-            exiftool_result = exiftool(file_with_path)
-            fprop.update(exiftool_result)
-        # image average hash
-        if Const.avarage_hash_flag in config.flags:
-            fprop["image_average_hash"] = image_average_hash(file_with_path)
-        # image_difference_hash
-        if Const.difference_hash_flag in config.flags:
-            fprop["image_difference_hash"] = image_difference_hash(
-                file_with_path)
-
-        # add to catalog
-        catalog.append(fprop)
-    except KeyboardInterrupt:
-        exit(1)
-    except:
-        print("\nError ", sys.exc_info()[0], " occurred.")
-        continue
-
-print("\n")
+catalog = make_catalog(config.catalog_directory, config.flags)
 
 # writing to csv file
 write(config.catalog_file_name, catalog)
 
+# done in ...
 time_total = time.time() - start_time
 time_minutes = int(time_total / 60)
 time_seconds = int(time_total % 60)
-print("Done in {}m {}s".format(time_minutes, time_seconds))
+mili_seconds = int(time_total * 1000)
+if time_minutes > 0:
+    print("Done in {}m {}s".format(time_minutes, time_seconds))
+elif time_seconds > 0:
+    print("Done in {}s".format(time_seconds))
+else:
+    print("Done in {}ms".format(mili_seconds))
