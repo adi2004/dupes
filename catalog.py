@@ -204,12 +204,33 @@ def make_catalog(directory, flags):
     
     return catalog
 
+def make_key(file_attrs):
+    return file_attrs["path"] + "/" + file_attrs["file_name"] + ":" + file_attrs["file_size"]
+
+def make_old_catalog_hash(file):
+    old_catalog_hash = {}
+    if os.path.isfile(file):
+        print("There already is a {} catalog. It will be updated with new values.".format(file))
+        old_catalog = read(file)
+        for file_attrs in old_catalog:
+            key = make_key(file_attrs)
+            old_catalog_hash[key] = file_attrs
+    return old_catalog_hash
+
+def merge(old_hash, new):
+    if len(old_hash) == 0:
+        return new
+    else:
+        return new
+
 # === START === #
 
 start_time = time.time()
 config = read_configuration()
+old_catalog_hash = make_old_catalog_hash(config.catalog_file_name)
 print("Reading {}/{}".format(os.getcwd(), config.catalog_directory))
-catalog = make_catalog(config.catalog_directory, config.flags)
+new_catalog = make_catalog(config.catalog_directory, config.flags)
+catalog = merge(old_catalog_hash, new_catalog)
 
 # writing to csv file
 write(config.catalog_file_name, catalog)
