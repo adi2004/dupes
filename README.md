@@ -21,7 +21,7 @@ catalog.py
    - catalogs the files in a directory and outputs them to a csv file. Also calculates hashes.
 dupes.py 
    - find duplicate files in a csv files based on the given columns as a criteria
-   - find files that are in an incoming catalog based on a master catalog using user criteria (i.e. same md5 hash, or other form of hash)
+   - find files that are in an incoming catalog based on a master catalog using user criteria (i.e. same md5 hash or other form of hash)
 prune.py
    - prune a catalog (remove files that do not exist anymore)
 # Improvements Ideeas

@@ -19,7 +19,7 @@
             "console": "integratedTerminal",
             "args": [
                 "0",
-                "../",
+                "test/",
                 "test.csv"
             ]
         }, 

@@ -51,7 +51,7 @@ def print_progress(file_path, file_name, view):
     else:
         size_string = "%.2f KiB" % (view.total_size / Const.kibi)
 
-    spinner = " " + Const.progress[view.file_count % 5] + " "
+    spinner = " " + Const.progress[view.file_count % len(Const.progress)] + " "
     out_string = "\rFound {:,d}".format(view.file_count) + " files " + \
         "totaling " + size_string + spinner + \
         "reading " + file_path + "/" + file_name
@@ -117,13 +117,14 @@ def image_difference_hash(filename):
 # === START === #
 
 if len(sys.argv) != 4:
-    print("Use ./catalog.py flags <dir-to-catalog> <catalog_file.csv")
+    print("Use ./catalog.py flags <dir-to-catalog> <catalog_file.csv>")
     print(
-        "The flags are:\n\t" +
-        Const.md5_hash_flag + " for MD5\n\t" +
-        Const.exiftool_flag + " for exiftool\n\t" +
-        Const.avarage_hash_flag + " for average hash algorithm\n\t" +
-        Const.difference_hash_flag + " for difference hash algorithm (recommended)\n"
+        "The flags are:\n" +
+        "\t 0 to just read the files" +
+        "\t" + Const.md5_hash_flag + " for MD5\n" +
+        "\t" + Const.exiftool_flag + " for exiftool\n" +
+        "\t" + Const.avarage_hash_flag + " for average hash algorithm\n" +
+        "\t" + Const.difference_hash_flag + " for difference hash algorithm (recommended)\n"
     )
     exit(1)
 

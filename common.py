@@ -5,8 +5,7 @@ class Const:
     gibi = 1024 * 1024 * 1024
     mebi = 1024 * 1024
     kibi = 1024
-
-    progress = ["|", "/", "-", "|", "\\"]
+    progress = ["|", "/", "-", "\\"] 
     imgs = ['.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif']
     mvs = ['.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg']
 
@@ -16,7 +15,7 @@ class Const:
     md5_hash_flag = "5"
     exiftool_flag = "e"
     avarage_hash_flag = "a"
-    difference_hash_flag = "d"
+    difference_hash_flag = "d" # recommended
 
     duplicates = "dplc"
     pruned = "prnd"
