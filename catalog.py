@@ -20,6 +20,11 @@ class View:
     total_size = 0
     printed_length = 0
 
+class Config:
+    flags = "0"
+    catalog_directory = ""
+    catalog_file_name = ""
+
 
 def is_ignored(filename):
     filename = filename.lower()
@@ -113,31 +118,35 @@ def image_difference_hash(filename):
         row, col = dhash.dhash_row_col(img)
         return dhash.format_hex(row, col)
 
+def read_configuration():
+    cfg = Config()
+    if len(sys.argv) != 4:
+        print("Use ./catalog.py flags <dir-to-catalog> <catalog_file.csv>")
+        print(
+            "The flags are:\n" +
+            "\t 0 to just read the files" +
+            "\t" + Const.md5_hash_flag + " for MD5\n" +
+            "\t" + Const.exiftool_flag + " for exiftool\n" +
+            "\t" + Const.avarage_hash_flag + " for average hash algorithm\n" +
+            "\t" + Const.difference_hash_flag + " for difference hash algorithm (recommended)\n"
+        )
+        exit(1)
+
+    cfg.flags = sys.argv[1]
+    cfg.catalog_directory = sys.argv[2] 
+    if cfg.catalog_directory.endswith('/'):
+        cfg.catalog_directory = cfg.catalog_directory[:-1]
+    cfg.catalog_file_name = sys.argv[3]
+    return cfg
 
 # === START === #
 
-if len(sys.argv) != 4:
-    print("Use ./catalog.py flags <dir-to-catalog> <catalog_file.csv>")
-    print(
-        "The flags are:\n" +
-        "\t 0 to just read the files" +
-        "\t" + Const.md5_hash_flag + " for MD5\n" +
-        "\t" + Const.exiftool_flag + " for exiftool\n" +
-        "\t" + Const.avarage_hash_flag + " for average hash algorithm\n" +
-        "\t" + Const.difference_hash_flag + " for difference hash algorithm (recommended)\n"
-    )
-    exit(1)
-
-
 start_time = time.time()
-flags = sys.argv[1]
-catalog_directory = sys.argv[2] 
-if catalog_directory.endswith('/'):
-    catalog_directory = catalog_directory[:-1]
-catalog_file_name = sys.argv[3]
-print("Reading {}/{}".format(os.getcwd(), catalog_directory))
+config = read_configuration()
 
-catalog_paths = list(Path(catalog_directory).rglob("*"))
+print("Reading {}/{}".format(os.getcwd(), config.catalog_directory))
+
+catalog_paths = list(Path(config.catalog_directory).rglob("*"))
 
 catalog = []
 view= View()
@@ -146,7 +155,7 @@ for path in catalog_paths:
     path_parent = str(path.parent)
     file_name = str(path.name)
     file_with_path = path_parent + "/" + file_name
-    path_parent_short = remove_prefix(path_parent, catalog_directory)
+    path_parent_short = remove_prefix(path_parent, config.catalog_directory)
     path_parent_short = re.sub("^[./]+", "", path_parent_short)
     if path.is_dir() or is_ignored(file_with_path) or not is_included(file_with_path):
         continue
@@ -176,17 +185,17 @@ for path in catalog_paths:
         view.total_size += info.st_size
 
         # md5 hash
-        if Const.md5_hash_flag in flags:
+        if Const.md5_hash_flag in config.flags:
             fprop["md5_hash"] = md5_hash(file_with_path)
         # get date using exiftool
-        if Const.exiftool_flag in flags:
+        if Const.exiftool_flag in config.flags:
             exiftool_result = exiftool(file_with_path)
             fprop.update(exiftool_result)
         # image average hash
-        if Const.avarage_hash_flag in flags:
+        if Const.avarage_hash_flag in config.flags:
             fprop["image_average_hash"] = image_average_hash(file_with_path)
         # image_difference_hash
-        if Const.difference_hash_flag in flags:
+        if Const.difference_hash_flag in config.flags:
             fprop["image_difference_hash"] = image_difference_hash(
                 file_with_path)
 
@@ -201,7 +210,7 @@ for path in catalog_paths:
 print("\n")
 
 # writing to csv file
-write(catalog_file_name, catalog)
+write(config.catalog_file_name, catalog)
 
 time_total = time.time() - start_time
 time_minutes = int(time_total / 60)
