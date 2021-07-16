@@ -43,7 +43,7 @@ def dt(timestamp):
     return datetime.fromtimestamp(timestamp).strftime("%Y.%m.%d %H.%M")
 
 
-def print_progress(path, view):
+def print_progress(path, view, isSkipping):
     if view.total_size >= Const.gibi:
         size_string = "%.2f GiB" % (view.total_size / Const.gibi)
     elif view.total_size >= Const.mebi:
@@ -56,7 +56,7 @@ def print_progress(path, view):
     out_string = "\rProgress {:.2f}%, ".format(procent) + \
         "processed {:_d}".format(view.file_count) + " files " + \
         "totaling " + size_string + spinner + \
-        "reading " + str(path)
+        ("skipping " if isSkipping else "reading ") + str(path)
     if len(out_string) > 120:
         out_string = out_string[:100] + "..." + out_string[-20:]
     end_padding = view.printed_length - len(out_string)
@@ -139,18 +139,19 @@ def make_catalog(resolved_path, flags):
     catalog = []
     view = View()
     view.total_files = len(catalog_paths)
-    print("Found {:_d} paths.".format(view.total_files ))
+    print("Found {:_d} paths in {}.".format(view.total_files, make_elpsed_time_string(start_time)))
 
     for path in catalog_paths:
         relative_path = path.relative_to(resolved_path)
         view.file_count += 1
         if relative_path.is_dir() or is_ignored(relative_path) or not is_included(relative_path):
+            view.printed_length = print_progress(relative_path, view, True)
             continue
+        view.printed_length = print_progress(relative_path, view, False)
         fprop = {}
         try:
             info = path.stat()
             # populate filter criteria
-            view.printed_length = print_progress(relative_path, view)
             parts = relative_path.parts
             fprop["path_part_1"] = parts[0] if len(parts) > 0 else ""
             fprop["path_part_2"] = parts[1] if len(parts) > 1 else ""
@@ -215,6 +216,18 @@ def merge(old_hash, new):
     else:
         return new
 
+def make_elpsed_time_string(start_time):
+    time_total = time.time() - start_time
+    time_minutes = int(time_total / 60)
+    time_seconds = int(time_total % 60)
+    mili_seconds = int(time_total * 1000)
+    if time_minutes > 0:
+        return("{}m {}s".format(time_minutes, time_seconds))
+    elif time_seconds > 0:
+        return("{}s".format(time_seconds))
+    else:
+        return("{}ms".format(mili_seconds))
+
 # === START === #
 
 start_time = time.time()
@@ -226,16 +239,8 @@ new_catalog = make_catalog(resolved_path, config.flags)
 catalog = merge(old_catalog_hash, new_catalog)
 
 # writing to csv file
-write(config.catalog_file_name, catalog)
+resolved_output_path = Path(config.catalog_file_name).expanduser().resolve()
+write(resolved_output_path, catalog)
 
 # done in ...
-time_total = time.time() - start_time
-time_minutes = int(time_total / 60)
-time_seconds = int(time_total % 60)
-mili_seconds = int(time_total * 1000)
-if time_minutes > 0:
-    print("Done in {}m {}s".format(time_minutes, time_seconds))
-elif time_seconds > 0:
-    print("Done in {}s".format(time_seconds))
-else:
-    print("Done in {}ms".format(mili_seconds))
+print("Done in " + make_elpsed_time_string(start_time))

@@ -33,12 +33,12 @@ def read(file):
             catalog.append(row)
     return catalog
 
-def write(file, catalog):
+def write(path, catalog):
     if len(catalog) == 0:
         print("Nothing to write...")
         return
-    print("Writing to {}".format(file))
-    with open(file, 'w') as file_handler:
+    print("Writing to {}".format(path))
+    with open(path, 'w') as file_handler:
         # creating a csv dict writer object
         writer = csv.DictWriter(
             file_handler, fieldnames=list(catalog[0].keys()))
