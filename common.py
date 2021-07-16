@@ -9,7 +9,7 @@ class Const:
     imgs = ['.png', '.jpg', '.jpeg', '.tiff', '.bmp', '.gif']
     mvs = ['.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg']
 
-    exclude_list = [".git", "@eaDir", "backup", "incoming"] # case insensitive
+    exclude_list = [".git", "@eaDir", "backup", "incoming", ".vscode", ".unotes", "__pycache__"] # case insensitive
     include_list = ['.mov', '.avi', '.mp4', '.m4v', '.wmv', '.mpg', '.mpeg']
 
     md5_hash_flag = "5"
