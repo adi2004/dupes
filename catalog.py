@@ -70,15 +70,15 @@ def path_filter(path):
     # populate filter criteria
     parts = path.parts
     result = {}
-    result["path_part_1"] = parts[0] if len(parts) > 0 else ""
-    result["path_part_2"] = parts[1] if len(parts) > 1 else ""
-    result["path_part_3"] = parts[2] if len(parts) > 2 else ""
-    result["path_end"] = parts[-1] if len(parts) > 0 else ""
-    result["file_extension"] = path.suffix
+    result[Const.field_path_part_1] = parts[0] if len(parts) > 0 else ""
+    result[Const.field_path_part_2] = parts[1] if len(parts) > 1 else ""
+    result[Const.field_path_part_3] = parts[2] if len(parts) > 2 else ""
+    result[Const.field_path_end] = parts[-1] if len(parts) > 0 else ""
+    result[Const.field_file_extension] = path.suffix
 
     # populate path and file_name
-    result["path"] = path.parent
-    result["file_name"] = path.name
+    result[Const.field_path] = path.parent
+    result[Const.field_file_name] = path.name
 
     return result
 
@@ -86,11 +86,11 @@ def basic_stat(info):
     result = {}
 
     # populate file dates
-    result["modified_time"] = dt(info.st_mtime)
-    result["created_time"] = dt(info.st_ctime)
-    result["access_time"] = dt(info.st_atime)
+    result[Const.field_modified_time] = dt(info.st_mtime)
+    result[Const.field_created_time] = dt(info.st_ctime)
+    result[Const.field_access_time] = dt(info.st_atime)
     # size
-    result["file_size"] = info.st_size
+    result[Const.field_file_size] = info.st_size
 
     return result
 
