@@ -182,7 +182,7 @@ def make_catalog(resolved_path, flags, old_catalog):
         fprop = {}
         try:
             info = path.stat()
-            fprop.update(path_filter(path))
+            fprop.update(path_filter(relative_path))
             new_key =  make_key(fprop, info.st_size)
             fprop.update(old_catalog.get(new_key, {}))
             fprop.update(basic_stat(info))
