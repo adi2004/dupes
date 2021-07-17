@@ -18,7 +18,7 @@ def dupes_catalog(catalog, headers_criteria, existing_key_values, max_dupes=2):
         duplicate_files = existing_key_values.get(key, [])
         if len(duplicate_files) >= max_dupes:
             file_attrs["dupe_count"] = len(duplicate_files)
-            file_attrs["cmd"] = duplicate_files[0]["cmd"]
+            duplicate_files[0]["cmd"] = ""
             catalog_with_duplicates.append(file_attrs)
     return catalog_with_duplicates
 
@@ -37,23 +37,21 @@ master_kv = {}
 for master_file_attrs in master_catalog:
     key = ""
     for header in headers:
-        key += master_file_attrs[header]
+        key += master_file_attrs.get(header, "")
     dupes = master_kv.get(key, []) + [master_file_attrs]
     dupes.sort(key=lambda k: k['modified_time'], reverse=True)
     dupes.sort(key=lambda k: int(k['file_size']), reverse=True)
     for dupe in dupes:
-        dupe["delete"] = True
         dupe_path = '"dupes/' + dupe["path"] + '"'
         dupe["cmd"] = 'mkdir -p ' + dupe_path + ' && mv "' + dupe["path"] + "/" + dupe["file_name"] + '" ' + dupe_path
-    # dupes[0]["delete"] = False
-    # dupes[0]["cmd"] = ""
     master_kv[key] = dupes
 
 master_catalog_with_duplicates = dupes_catalog(master_catalog, headers, master_kv)
 master_duplicates_file = append_suffix(master_catalog_file, Const.duplicates)
 master_catalog_with_duplicates.sort(key=lambda k: k['modified_time'], reverse=True)
 master_catalog_with_duplicates.sort(key=lambda k: int(k['file_size']), reverse=True)
-master_catalog_with_duplicates.sort(key=lambda k: k['image_difference_hash'])
+if 'md5_hash' in master_catalog_with_duplicates:
+    master_catalog_with_duplicates.sort(key=lambda k: k['md5_hash'])
 write(master_duplicates_file, master_catalog_with_duplicates)
 
 # find duplicates in the second catalog if they exist in the first catalog

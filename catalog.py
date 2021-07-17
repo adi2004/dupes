@@ -7,6 +7,7 @@ import re
 import subprocess
 import sys
 import time
+import traceback
 from datetime import datetime
 from pathlib import Path
 
@@ -65,6 +66,34 @@ def print_progress(path, view, isSkipping):
     return len(out_string)
 
 
+def path_filter(path):
+    # populate filter criteria
+    parts = path.parts
+    result = {}
+    result["path_part_1"] = parts[0] if len(parts) > 0 else ""
+    result["path_part_2"] = parts[1] if len(parts) > 1 else ""
+    result["path_part_3"] = parts[2] if len(parts) > 2 else ""
+    result["path_end"] = parts[-1] if len(parts) > 0 else ""
+    result["file_extension"] = path.suffix
+
+    # populate path and file_name
+    result["path"] = path.parent
+    result["file_name"] = path.name
+
+    return result
+
+def basic_stat(info):
+    result = {}
+
+    # populate file dates
+    result["modified_time"] = dt(info.st_mtime)
+    result["created_time"] = dt(info.st_ctime)
+    result["access_time"] = dt(info.st_atime)
+    # size
+    result["file_size"] = info.st_size
+
+    return result
+
 def md5_hash(path):
     md5_hash = hashlib.md5()
     with open(path, "rb") as f:
@@ -75,26 +104,28 @@ def md5_hash(path):
 
 
 def exiftool(path):
+    result = {
+        Const.field_exiftool_duration: "",
+        Const.field_exiftool_date: "", 
+        Const.field_exiftool_content_date: ""
+    }
+    if path.suffix not in Const.imgs + Const.mvs:
+        return result
     output = subprocess.getoutput(
         'exiftool -d "%Y.%m.%d %H.%M.%S" -Duration -ContentCreateDate -CreateDate "' + str(path) + '"')
     output = output.splitlines()
-    result = {
-        "exiftool_duration": "",
-        "exiftool_date": "", 
-        "exiftool_content_date": ""
-    }
     for line in output:
         if line.startswith("Create"):
             line = re.sub("^.*: ", "", line)
             if line.startswith("19") or line.startswith("20"):
-                result["exiftool_date"] = line
+                result[Const.field_exiftool_date] = line
         elif line.startswith("Content"):
             line = re.sub("^.*: ", "", line)
             if line.startswith("19") or line.startswith("20"):
-                result["exiftool_content_date"] = line
+                result[Const.field_exiftool_content_date] = line
         if line.startswith("Duration"):
             line = re.sub("^.*: ", "", line)
-            result["exiftool_duration"] = line
+            result[Const.field_exiftool_duration] = line
     return result
 
 
@@ -134,7 +165,7 @@ def read_configuration():
     cfg.catalog_file_name = sys.argv[3]
     return cfg
 
-def make_catalog(resolved_path, flags):
+def make_catalog(resolved_path, flags, old_catalog):
     catalog_paths = list(resolved_path.rglob("*"))
     catalog = []
     view = View()
@@ -151,39 +182,29 @@ def make_catalog(resolved_path, flags):
         fprop = {}
         try:
             info = path.stat()
-            # populate filter criteria
-            parts = relative_path.parts
-            fprop["path_part_1"] = parts[0] if len(parts) > 0 else ""
-            fprop["path_part_2"] = parts[1] if len(parts) > 1 else ""
-            fprop["path_part_3"] = parts[2] if len(parts) > 2 else ""
-            fprop["path_end"] = parts[-1] if len(parts) > 0 else ""
-            fprop["file_extension"] = relative_path.suffix
+            fprop.update(path_filter(path))
+            new_key =  make_key(fprop, info.st_size)
+            fprop.update(old_catalog.get(new_key, {}))
+            fprop.update(basic_stat(info))
 
-            # populate path and file_name
-            fprop["path"] = relative_path.parent
-            fprop["file_name"] = relative_path.name
-
-            # populate file dates
-            fprop["modified_time"] = dt(info.st_mtime)
-            fprop["created_time"] = dt(info.st_ctime)
-            fprop["access_time"] = dt(info.st_atime)
-            # size
-            fprop["file_size"] = info.st_size
             view.total_size += info.st_size
 
             # md5 hash
-            if Const.md5_hash_flag in flags:
-                fprop["md5_hash"] = md5_hash(relative_path)
+            if Const.md5_hash_flag in flags and fprop.get(Const.field_md5_hash, "") == "":
+                fprop[Const.field_md5_hash] = md5_hash(relative_path)
             # get date using exiftool
-            if Const.exiftool_flag in flags:
+            shouldUpdateExif = fprop.get(Const.field_exiftool_duration, "") == "" and \
+                fprop.get(Const.field_exiftool_date, "") == "" and \
+                fprop.get(Const.field_exiftool_content_date, "") == ""
+            if Const.exiftool_flag in flags and shouldUpdateExif:
                 exiftool_result = exiftool(relative_path)
                 fprop.update(exiftool_result)
             # image average hash
-            if Const.avarage_hash_flag in flags:
-                fprop["image_average_hash"] = image_average_hash(relative_path)
+            if Const.avarage_hash_flag in flags and fprop.get(Const.field_image_average_hash, "") == "":
+                fprop[Const.field_image_average_hash] = image_average_hash(relative_path)
             # image_difference_hash
-            if Const.difference_hash_flag in flags:
-                fprop["image_difference_hash"] = image_difference_hash(
+            if Const.difference_hash_flag in flags and fprop.get(Const.field_image_difference_hash, "") == "":
+                fprop[Const.field_image_difference_hash] = image_difference_hash(
                     relative_path)
 
             # add to catalog
@@ -191,14 +212,18 @@ def make_catalog(resolved_path, flags):
         except KeyboardInterrupt:
             exit(1)
         except:
-            print("\nError ", sys.exc_info()[0], " occurred.")
-            continue
+            if Const.debug not in flags:
+                print("\nError ", sys.exc_info()[0], " occurred.")
+                continue
+            else:
+                traceback.print_exc()
+                exit(1)
     print("\n")
     
     return catalog
 
-def make_key(file_attrs):
-    return file_attrs["path"] + "/" + file_attrs["file_name"] + ":" + file_attrs["file_size"]
+def make_key(file_attrs, size):
+    return str(file_attrs[Const.field_path]) + file_attrs[Const.field_file_name] + str(size)
 
 def make_old_catalog_hash(file):
     old_catalog_hash = {}
@@ -206,7 +231,7 @@ def make_old_catalog_hash(file):
         print("There already is a {} catalog. It will be updated with new values.".format(file))
         old_catalog = read(file)
         for file_attrs in old_catalog:
-            key = make_key(file_attrs)
+            key = make_key(file_attrs, file_attrs[Const.field_file_size])
             old_catalog_hash[key] = file_attrs
     return old_catalog_hash
 
@@ -235,12 +260,11 @@ config = read_configuration()
 old_catalog_hash = make_old_catalog_hash(config.catalog_file_name)
 resolved_path = Path(config.catalog_directory).expanduser().resolve()
 print("Reading {}".format(resolved_path))
-new_catalog = make_catalog(resolved_path, config.flags)
-catalog = merge(old_catalog_hash, new_catalog)
+new_catalog = make_catalog(resolved_path, config.flags, old_catalog_hash)
 
 # writing to csv file
 resolved_output_path = Path(config.catalog_file_name).expanduser().resolve()
-write(resolved_output_path, catalog)
+write(resolved_output_path, new_catalog)
 
 # done in ...
 print("Done in " + make_elpsed_time_string(start_time))

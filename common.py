@@ -16,9 +16,30 @@ class Const:
     exiftool_flag = "e"
     avarage_hash_flag = "a"
     difference_hash_flag = "d" # recommended
+    debug = "D"
 
     duplicates = "dplc"
     pruned = "prnd"
+
+    field_path_part_1 = "path_part_1"
+    field_path_part_2 = "path_part_2"
+    field_path_part_3 = "path_part_3"
+    field_path_end = "path_end"
+    field_file_extension = "file_extension"
+    field_path = "path"
+    field_file_name = "file_name"
+    field_modified_time = "modified_time"
+    field_created_time = "created_time"
+    field_access_time = "access_time"
+    field_file_size = "file_size"
+
+    field_exiftool_duration = "exiftool_duration"
+    field_exiftool_date = "exiftool_date"
+    field_exiftool_content_date = "exiftool_content_date"
+
+    field_md5_hash = "md5_hash"
+    field_image_average_hash = "image_average_hash"
+    field_image_difference_hash = "image_difference_hash"
 
 def append_suffix(file, suffix):
     name = os.path.splitext(file)[0]
